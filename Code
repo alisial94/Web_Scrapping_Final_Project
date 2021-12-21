@@ -1,6 +1,7 @@
 rm(list=ls())
 
 getwd()
+library(tidyverse)
 library(rvest)
 library(xml2)
 library(data.table)
@@ -10,17 +11,30 @@ library(ggplot2)
 library(stringr)
 library(tidyr)
 library(hrbrthemes)
+library(prettydoc)
 library(ggthemes)
+library(haven)
+library(data.table)
+library(rms)
+library(pscl)
+library(mfx)
+library(kableExtra)
+library(lspline)
+library(reshape2)
+library(dplR)
+library(fixest)
+library(dplyr)
+library(AER)
+library(ggpubr)
 getwd()
 
-
-### first part getting the link for the main page
+# first part getting the link for the main page
 p <- read_html("https://aerocorner.com/manufacturers/")
 name <- p %>% html_nodes('.list-manufacturers .py-1 .py-1') %>% html_text()
 link <- p %>% html_nodes('.list-manufacturers .py-1 .py-1') %>% html_attr('href') 
 df <- data.frame('Name' = name, 'link' = link)
 
-### getting the 
+# getting the 
 get_company <- function(url) {
   l <- read_html(url)
   list_x <- list()
@@ -35,7 +49,7 @@ url <- df$link
 dfx <- lapply(url, get_company)
 dfx1 <- rbindlist(dfx, fill = T)
 
-### First Table
+# First Table
 get_info <- function(url2) {
   x <- read_html(url2)
   list_y <- list()
@@ -62,7 +76,7 @@ df_aircraft<- df_aircraft[-c(7, 20, 64, 75, 81, 83, 98, 122, 124, 208, 237, 239,
                              846, 865, 878, 880, 883, 887, 891, 893, 895, 919, 933), ]
 
 
-### Second Table
+#Second Table
 get_details <- function(url2) {
   x <- read_html(url2)
   list_z <- list()
@@ -81,7 +95,7 @@ df_spec1 <- rbindlist(get_details_list, fill = T)
 
 
 
-### Third Table
+#Third Table
 
 get_details_1 <- function(url2) {
   x <- read_html(url2)
@@ -102,7 +116,7 @@ df_spec2 <- rbindlist(get_details_list_1, fill = T)
 
 
 
-### Fourth Table
+#Fourth Table
 
 get_details_2 <- function(url2) {
   x <- read_html(url2)
@@ -132,18 +146,18 @@ final_aircraft_data<- final_aircraft_data[, -c(1)]
 View(final_aircraft_data)
 
 getwd()
-### saving the entire data scrapped into a CSV so it is easier to run the Rmd file
+# saving the entire data scrapped into a CSV so it is easier to run the Rmd file
 write_csv( final_aircraft_data , 'aircraft_data' )
 
 
 
-### calling data from git 
+# calling data from git 
 
 aircraft_data <- read_csv(url("https://raw.githubusercontent.com/alisial94/Web_Scrapping_Final_Project/main/aircraft_data")) 
 
-### Cleaning and Mungging data
+## Cleaning and Mungging data
 
-### Filtering data
+## Filtering data
 viz_data <- aircraft_data %>%
   filter(!(`Seats - First Class:` %in% "\n ")) %>%
   filter(!(`Wing Tips:` %in% 
@@ -153,18 +167,17 @@ viz_data <- aircraft_data %>%
 #removing the unwanted columns
 viz_data <- viz_data[, c(1,2,3,6,9,13,21)] 
 
-
-### extracting the price in millions from the string variable
+# extracting the price in millions from the string variable
 viz_data$Price <- as.numeric(gsub(".*?([0.0000001-9.99]+).*", "\\1", viz_data$price)) 
 
 #converting the power in pound force to horsepower in new column
-viz_data$pound_force <- ifelse(grepl('pound-force', viz_data$Power),viz_data$Power,"")
+viz_data$pound_force <- ifelse(grepl('pound-force', viz_data$`Power:`),viz_data$`Power:`,"")
 viz_data$pound_force <- gsub('pound-force', '', viz_data$pound_force)
 viz_data$pound_force <- as.numeric(gsub(",","",viz_data$pound_force))
 viz_data$pound_force <- (viz_data$pound_force/500)*60
 
 #fixing the power that is in horsepower in a new column
-viz_data$horse_power <- ifelse(grepl('horsepower', viz_data$Power),viz_data$Power,"")
+viz_data$horse_power <- ifelse(grepl('horsepower', viz_data$`Power:`),viz_data$`Power:`,"")
 viz_data$horse_power <- gsub('horsepower', '', viz_data$horse_power)
 viz_data$horse_power <- as.numeric(gsub(",","",viz_data$horse_power))
 
@@ -192,27 +205,27 @@ viz_data$fuel_tank_Cap<-gsub("g.*","",viz_data$`Fuel Tank Capacity:`)
 viz_data$fuel_tank_Cap <- as.numeric(gsub(",","",viz_data$fuel_tank_Cap))
 
 
-### Total number of different aircraft each manufacturer produces
+# Total number of different aircraft each manufacturer produces
 Viz1 <-viz_data %>%
   ggplot() +
   aes(x = manufacturer) +
-  geom_bar(fill = "#3FD965") +
+  geom_bar(fill = "seagreen3") +
   labs(x = "Manufacturer", 
        y = "Count of Aircraft ", title = "Aircrafts per Manufacturer") +
   ggthemes::theme_economist_white()+
   theme( axis.text.x = element_text(angle = 60, vjust = 1,
-                                    size = 5, hjust = 1))
+                                    size = 6, hjust = 1))
 
 Viz1
 
 
 
-### Linear Regression Price Vs Power
+# Linear Regression Price Vs Power
 Viz2 <-  viz_data %>% 
   filter(Horsepower <= 10000) %>%
   filter(Price <= 500) %>% 
   ggplot( aes(x = log(Horsepower), y = log(Price))) +
-  geom_point(color='red',size=2,alpha=0.6) +
+  geom_point(color='seagreen3',size=2,alpha=0.6) +
   geom_smooth(method="lm" , formula = y ~ x )+
   labs(x = "Log Horse Power", y = "Log Price (US$ in Million)") +
   ggthemes::theme_economist_white()
@@ -224,12 +237,12 @@ regPvP <- feols( log(Price) ~ log(Horsepower), data=viz_data, vcov = 'hetero' )
 summary( regPvP )
 
 
-### Linear Regression Fuel Economy Vs Fuel Tank Size
+# Linear Regression Fuel Economy Vs Fuel Tank Size
 Viz3 <- viz_data %>% 
   filter(fuel_tank_Cap <= 60000) %>%
   filter(Fuel_Eco <= 30) %>% 
   ggplot( aes(x = log(fuel_tank_Cap), y = log(Fuel_Eco))) +
-  geom_point(color='red',size=2,alpha=0.6) +
+  geom_point(color='seagreen3',size=2,alpha=0.6) +
   geom_smooth(method="lm" , formula = y ~ x )+
   labs(x = "Log Fuel Tank Capacity (Gallon)", y = "Log Fuel Economy (nautical mile per gallon)") +
   theme_bw()
@@ -237,4 +250,4 @@ Viz3 <- viz_data %>%
 Viz3
 
 regEvC <- feols( log(fuel_tank_Cap) ~ log(Fuel_Eco), data=viz_data, vcov = 'hetero' )
-summary( regEvC )
+summary( regEvC  )
